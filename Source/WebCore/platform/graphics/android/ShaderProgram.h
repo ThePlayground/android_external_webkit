@@ -79,6 +79,14 @@ public:
     FloatRect documentViewport() { return m_documentViewport; }
 
     void resetBlending();
+    //Getters
+    SkRect& getViewport()   { return m_viewport; }
+    IntRect& getViewRect()  { return m_viewRect; }
+    FloatRect& getClipRect()    { return m_clipRect;    }
+    IntRect& getScreenClip()    { return m_screenClip;  }
+    int& getTitleBarHeight()    { return m_titleBarHeight;  }
+    IntRect& getWebViewRect()   { return m_webViewRect; }
+
     float contrast() { return m_contrast; }
     void setContrast(float c) {
         float contrast = c;

@@ -1507,6 +1507,8 @@ bool RenderLayerCompositor::requiresCompositingForVideo(RenderObject* renderer) 
 
 bool RenderLayerCompositor::requiresCompositingForCanvas(RenderObject* renderer) const
 {
+    return true;
+
     if (!(m_compositingTriggers & ChromeClient::CanvasTrigger))
         return false;
 

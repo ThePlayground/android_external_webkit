@@ -683,6 +683,8 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	platform/graphics/android/TreeManager.cpp \
 	platform/graphics/android/VerticalTextMap.cpp \
 	platform/graphics/android/VideoLayerAndroid.cpp \
+	platform/graphics/android/CanvasLayerAndroid.cpp \
+	platform/graphics/android/CanvasLayerShader.cpp \
 	platform/graphics/android/VideoLayerManager.cpp \
 	platform/graphics/android/ZoomManager.cpp \
 	platform/graphics/android/android_graphics.cpp \
