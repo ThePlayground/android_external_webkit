@@ -479,9 +479,8 @@ void TransferQueue::setTextureUploadType(TextureUploadType type)
     discardQueue();
 
     android::Mutex::Autolock lock(m_transferQueueItemLocks);
-// Flag to use CpuUpload when experiencing OpenGL rendering issues
 #ifdef FORCE_CPU_UPLOAD
-    m_currentUploadType = CpuUpload;
+    m_currentUploadType = CpuUpload; // force to cpu upload mode for now until gpu upload mode is fixed
 #else
     m_currentUploadType = type;
 #endif
