@@ -62,6 +62,7 @@ struct MediaPlayerPrivate::JavaGlue {
     jmethodID m_teardown;
     jmethodID m_seek;
     jmethodID m_pause;
+    jmethodID m_setVolume;
     // Audio
     jmethodID m_newInstance;
     jmethodID m_setDataSource;
@@ -110,6 +111,29 @@ void MediaPlayerPrivate::pause()
     checkException(env);
 }
 
+void MediaPlayerPrivate::setVolume(float volume)
+{
+    float newVolume = volume;
+
+    if (volume < 0.0f)
+        newVolume = 0.0f;
+
+    if (volume > 1.0f)
+        newVolume = 1.0f;
+
+    JNIEnv* env = JSC::Bindings::getJNIEnv();
+    if (!env || !m_glue->m_javaProxy)
+        return;
+
+    env->CallVoidMethod(m_glue->m_javaProxy, m_glue->m_setVolume, newVolume);
+
+    if (!m_player->muted() && (newVolume != m_player->volume()))
+        m_player->volumeChanged(newVolume);
+
+    checkException(env);
+}
+
+
 void MediaPlayerPrivate::setVisible(bool visible)
 {
     m_isVisible = visible;
@@ -154,6 +178,7 @@ MediaPlayerPrivate::MediaPlayerPrivate(MediaPlayer* player)
     m_poster(0),
     m_naturalSize(100, 100),
     m_naturalSizeUnknown(true),
+    m_durationUnknown(true),
     m_isVisible(false),
     m_videoLayer(new VideoLayerAndroid())
 {
@@ -238,6 +263,49 @@ public:
 
         checkException(env);
     }
+
+    void onPrepared(int duration, int width, int height)
+    {
+        m_networkState = MediaPlayer::Loaded;
+        m_player->networkStateChanged();
+        m_readyState = MediaPlayer::HaveEnoughData;
+        m_player->readyStateChanged();
+
+        // Don't update width and height here. For HLS video, width and
+        // height are both 0 when onPrepared() is called. User would have
+        // no way to access the video control to start the video if width
+        // and height are updated to 0 x 0. Only update width and height
+        // when updateSizeAndDuration() is called.
+        updateDuration(duration);
+    }
+
+    void updateSizeAndDuration(int duration, int width, int height)
+    {
+        updateDuration(duration);
+
+        if (width != 0 && height != 0 && m_naturalSizeUnknown) {
+            m_naturalSize = IntSize(width, height);
+            m_naturalSizeUnknown = false;
+            m_player->sizeChanged();
+            TilesManager::instance()->videoLayerManager()->updateVideoLayerSize(
+                m_player->platformLayer()->uniqueId(), width*height);
+        }
+    }
+
+    void updateDuration(int duration)
+    {
+        if (duration > 0 && m_durationUnknown) {
+            m_duration = duration / 1000.0f;
+            m_durationUnknown = false;
+        } else if (m_durationUnknown) {
+            // If the duration is unknown, Android Media Player returns 0,
+            // The duration should be set to positive infinity
+            // according to the HTML5 video spec in this case
+            m_duration = std::numeric_limits<float>::infinity();
+        }
+        m_player->durationChanged();
+    }
+
     bool canLoadPoster() const { return true; }
     void setPoster(const String& url)
     {
@@ -293,17 +361,6 @@ public:
         }
     }
 
-    void onPrepared(int duration, int width, int height)
-    {
-        m_duration = duration / 1000.0f;
-        m_naturalSize = IntSize(width, height);
-        m_naturalSizeUnknown = false;
-        m_player->durationChanged();
-        m_player->sizeChanged();
-        TilesManager::instance()->videoLayerManager()->updateVideoLayerSize(
-            m_player->platformLayer()->uniqueId(), width*height);
-    }
-
     virtual bool hasAudio() const { return false; } // do not display the audio UI
     virtual bool hasVideo() const { return true; }
     virtual bool supportsFullscreen() const { return true; }
@@ -320,13 +377,14 @@ public:
             return;
 
         m_glue = new JavaGlue;
-        m_glue->m_getInstance = env->GetStaticMethodID(clazz, "getInstance", "(Landroid/webkit/WebViewCore;I)Landroid/webkit/HTML5VideoViewProxy;");
+        m_glue->m_getInstance = env->GetStaticMethodID(clazz, "getInstance", "(Landroid/webkit/WebViewCore;II)Landroid/webkit/HTML5VideoViewProxy;");
         m_glue->m_loadPoster = env->GetMethodID(clazz, "loadPoster", "(Ljava/lang/String;)V");
         m_glue->m_play = env->GetMethodID(clazz, "play", "(Ljava/lang/String;II)V");
 
         m_glue->m_teardown = env->GetMethodID(clazz, "teardown", "()V");
         m_glue->m_seek = env->GetMethodID(clazz, "seek", "(I)V");
         m_glue->m_pause = env->GetMethodID(clazz, "pause", "()V");
+        m_glue->m_setVolume = env->GetMethodID(clazz, "setVolume", "(F)V");
         m_glue->m_javaProxy = 0;
         env->DeleteLocalRef(clazz);
         // An exception is raised if any of the above fails.
@@ -358,7 +416,7 @@ public:
             return;
 
         // Get the HTML5VideoViewProxy instance
-        obj = env->CallStaticObjectMethod(clazz, m_glue->m_getInstance, javaObject.get(), this);
+        obj = env->CallStaticObjectMethod(clazz, m_glue->m_getInstance, javaObject.get(), this, m_videoLayer->uniqueId());
         m_glue->m_javaProxy = env->NewGlobalRef(obj);
         // Send the poster
         jstring jUrl = 0;
@@ -456,6 +514,7 @@ public:
         m_glue->m_teardown = env->GetMethodID(clazz, "teardown", "()V");
         m_glue->m_seek = env->GetMethodID(clazz, "seek", "(I)V");
         m_glue->m_pause = env->GetMethodID(clazz, "pause", "()V");
+        m_glue->m_setVolume = env->GetMethodID(clazz, "setVolume", "(F)V");
         m_glue->m_javaProxy = 0;
         env->DeleteLocalRef(clazz);
         // An exception is raised if any of the above fails.
@@ -497,7 +556,7 @@ public:
         checkException(env);
     }
 
-    void onPrepared(int duration, int width, int height)
+    void updateSizeAndDuration(int duration, int width, int height)
     {
         // Android media player gives us a duration of 0 for a live
         // stream, so in that case set the real duration to infinity.
@@ -530,7 +589,15 @@ static void OnPrepared(JNIEnv* env, jobject obj, int duration, int width, int he
 {
     if (pointer) {
         WebCore::MediaPlayerPrivate* player = reinterpret_cast<WebCore::MediaPlayerPrivate*>(pointer);
-        player->onPrepared(duration, width, height);
+        player->updateSizeAndDuration(duration, width, height);
+    }
+}
+
+static void OnSizeChanged(JNIEnv* env, jobject obj, int duration, int width, int height, int pointer)
+{
+    if (pointer) {
+        WebCore::MediaPlayerPrivate* player = reinterpret_cast<WebCore::MediaPlayerPrivate*>(pointer);
+        player->updateSizeAndDuration(duration, width, height);
     }
 }
 
@@ -632,6 +699,8 @@ static void OnStopFullscreen(JNIEnv* env, jobject obj, int pointer)
 static JNINativeMethod g_MediaPlayerMethods[] = {
     { "nativeOnPrepared", "(IIII)V",
         (void*) OnPrepared },
+    { "nativeOnSizeChanged", "(IIII)V",
+        (void*) OnSizeChanged },
     { "nativeOnEnded", "(I)V",
         (void*) OnEnded },
     { "nativeOnStopFullscreen", "(I)V",
@@ -655,6 +724,8 @@ static JNINativeMethod g_MediaAudioPlayerMethods[] = {
         (void*) OnPrepared },
     { "nativeOnTimeupdate", "(II)V",
         (void*) OnTimeupdate },
+    { "nativeOnPaused", "(I)V",
+        (void*) OnPaused },
 };
 
 int registerMediaPlayerVideo(JNIEnv* env)
