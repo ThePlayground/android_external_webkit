@@ -190,7 +190,6 @@ public:
     {
         return m_paintedSurfaces.size();
     }
-    int getTextureManagerThreadID();
 
 private:
     TilesManager();
