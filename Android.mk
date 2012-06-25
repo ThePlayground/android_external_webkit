@@ -24,9 +24,9 @@
 ##
 
 # Control WebGL compiling in webkit.
-ifeq ($(ENABLE_WEBGL),true)
-LOCAL_CFLAGS += -DENABLE_WEBGL=1
-endif
+#ifneq ($(ENABLE_WEBGL),false)
+#    ENABLE_WEBGL = true
+#endif
 
 # Control SVG compiling in webkit.
 # Default is true unless explictly disabled.
@@ -155,6 +155,8 @@ LOCAL_C_INCLUDES := \
 	external/jpeg \
 	external/libxml2/include \
 	external/libxslt \
+	external/libpng \
+	external/zlib \
 	external/hyphenation \
 	external/skia/emoji \
 	external/skia/gpu/include \
@@ -166,11 +168,8 @@ LOCAL_C_INCLUDES := \
 	external/skia/include/utils \
 	external/skia/src/ports \
 	external/sqlite/dist \
-	external/zlib \
 	frameworks/base/core/jni/android/graphics \
 	frameworks/base/include
-
-LOCAL_C_INCLUDES += external/libpng
 
 # Add Source/ for the include of <JavaScriptCore/config.h> from WebCore/config.h
 LOCAL_C_INCLUDES := $(LOCAL_C_INCLUDES) \
