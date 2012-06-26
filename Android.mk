@@ -24,8 +24,8 @@
 ##
 
 # Control WebGL compiling in webkit.
-ifneq ($(ENABLE_WEBGL),false)
-    ENABLE_WEBGL = true
+ifeq ($(ENABLE_WEBGL),true)
+LOCAL_CFLAGS += -DENABLE_WEBGL=1
 endif
 
 # Control SVG compiling in webkit.
@@ -392,6 +392,10 @@ ifeq ($(ENABLE_SVG),true)
 LOCAL_CFLAGS += -DENABLE_SVG=1 -DENABLE_SVG_ANIMATION=1
 endif
 
+ifeq ($(ENABLE_WEBGL),true)
+LOCAL_CFLAGS += -DENABLE_WEBGL=1
+endif
+
 ifeq ($(ENABLE_WTF_USE_ACCELERATED_COMPOSITING),false)
 LOCAL_CFLAGS += -DWTF_USE_ACCELERATED_COMPOSITING=0
 endif
@@ -415,7 +419,7 @@ LOCAL_CFLAGS += -DENABLE_FPS_DISPLAY
 endif
 
 ifeq ($(ENABLE_WEBGL),true)
-LOCAL_CFLAGS += -DENABLE_WEBGL
+LOCAL_CFLAGS += -DENABLE_WEBGL=1
 endif
 
 # LOCAL_LDLIBS is used in simulator builds only and simulator builds are only
