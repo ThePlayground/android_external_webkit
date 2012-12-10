@@ -79,6 +79,19 @@ public:
     FloatRect documentViewport() { return m_documentViewport; }
 
     void resetBlending();
+    //Getters
+    SkRect& getViewport()   { return m_viewport; }
+    IntRect& getViewRect()  { return m_viewRect; }
+    FloatRect& getClipRect()    { return m_clipRect;    }
+    IntRect& getScreenClip()    { return m_screenClip;  }
+    int& getTitleBarHeight()    { return m_titleBarHeight;  }
+    IntRect& getWebViewRect()   { return m_webViewRect; }
+    FloatRect& getDocumentViewport()    { return m_documentViewport;  }
+    bool& getAlphaLayer()   { return m_alphaLayer;  }
+    float& getScale()   { return m_currentScale;}
+    TransformationMatrix& getRepositionMatrix() { return m_repositionMatrix;    }
+    TransformationMatrix& getWebViewMatrix()    { return m_webViewMatrix;   }
+
     float contrast() { return m_contrast; }
     void setContrast(float c) {
         float contrast = c;

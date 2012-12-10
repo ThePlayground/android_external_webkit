@@ -68,6 +68,12 @@ BaseLayerAndroid::BaseLayerAndroid()
 #if USE(ACCELERATED_COMPOSITING)
     : m_color(Color::white)
     , m_scrollState(NotScrolling)
+#if ENABLE(ACCELERATED_SCROLLING)
+    , m_contentLoading(false)
+    , m_enableDraw(false)
+    , m_needAlphaBlending(false)
+#endif
+
 #endif
 {
 #ifdef DEBUG_COUNT

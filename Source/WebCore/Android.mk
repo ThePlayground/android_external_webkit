@@ -287,6 +287,7 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	fileapi/FileList.cpp \
 	fileapi/FileReader.cpp \
 	fileapi/FileReaderLoader.cpp \
+	fileapi/FileReaderSync.cpp \
 	fileapi/FileStreamProxy.cpp \
 	fileapi/FileThread.cpp \
 	fileapi/ThreadableBlobRegistry.cpp \
@@ -630,6 +631,7 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	platform/graphics/SimpleFontData.cpp \
 	platform/graphics/StringTruncator.cpp \
 	platform/graphics/WidthIterator.cpp \
+        platform/graphics/WOFFFileFormat.cpp \
 	\
 	platform/graphics/android/AndroidAnimation.cpp \
 	platform/graphics/android/BaseLayerAndroid.cpp \
@@ -669,6 +671,7 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	platform/graphics/android/PlatformGraphicsContext.cpp \
 	platform/graphics/android/PerformanceMonitor.cpp \
 	platform/graphics/android/RasterRenderer.cpp \
+	platform/graphics/android/Renderer.cpp \
 	platform/graphics/android/ScrollableLayerAndroid.cpp \
 	platform/graphics/android/SharedBufferStream.cpp \
 	platform/graphics/android/ShaderProgram.cpp \
@@ -683,6 +686,8 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	platform/graphics/android/TreeManager.cpp \
 	platform/graphics/android/VerticalTextMap.cpp \
 	platform/graphics/android/VideoLayerAndroid.cpp \
+	platform/graphics/android/CanvasLayerAndroid.cpp \
+	platform/graphics/android/CanvasLayerShader.cpp \
 	platform/graphics/android/VideoLayerManager.cpp \
 	platform/graphics/android/ZoomManager.cpp \
 	platform/graphics/android/android_graphics.cpp \
@@ -1262,6 +1267,11 @@ endif
 # HACK for qcom devices CPU upload mode
 ifeq ($(TARGET_FORCE_CPU_UPLOAD),true)
 LOCAL_CFLAGS += -DFORCE_CPU_UPLOAD
+
+# proteus:
+ifeq ($(PROTEUS_DEVICE_API), true)
+LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
+        node/NodeProxy.cpp
 endif
 
 ifeq ($(call is-chipset-prefix-in-board-platform,msm7627),true)

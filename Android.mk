@@ -112,6 +112,8 @@ ifneq ($(HTTP_STACK),chrome)
   ENABLE_AUTOFILL = false
 endif
 
+#WEBCORE_ACCELERATED_SCROLLING := true
+
 BASE_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
@@ -159,6 +161,7 @@ LOCAL_C_INCLUDES := \
 	external/skia/include/utils \
 	external/skia/src/ports \
 	external/sqlite/dist \
+	external/zlib \
 	frameworks/base/core/jni/android/graphics \
 	frameworks/base/include
 
@@ -263,6 +266,28 @@ LOCAL_C_INCLUDES := $(LOCAL_C_INCLUDES) \
 	external/chromium/chrome \
 	external/skia
 
+ifeq ($(WEBCORE_ACCELERATED_SCROLLING),true)
+LOCAL_C_INCLUDES := $(LOCAL_C_INCLUDES) \
+	vendor/qcom/opensource/webkit/BackingStore
+endif
+
+ifeq ($(WEBCORE_FPS_DISPLAY),true)
+LOCAL_C_INCLUDES := $(LOCAL_C_INCLUDES) \
+	vendor/qcom/opensource/webkit/BackingStore
+endif
+
+# proteus framework
+ifeq ($(PROTEUS_DEVICE_API), true)
+LOCAL_C_INCLUDES := $(LOCAL_C_INCLUDES) \
+        $(WEBCORE_PATH)/node \
+        external/node/src \
+        external/node/deps/uv/include \
+        external/node/deps/uv/src/ev
+
+LOCAL_CFLAGS := $(LOCAL_CFLAGS) \
+         -DLOG_TAG_NODE=\"webkit-node\"
+endif
+
 ifeq ($(JAVASCRIPT_ENGINE),v8)
 # Include WTF source file.
 d := Source/JavaScriptCore
@@ -307,6 +332,11 @@ WEBKIT_SRC_FILES += $(addprefix $d/,$(LOCAL_SRC_FILES))
 LOCAL_PATH := $(BASE_PATH)
 
 # Define our compiler flags
+ifeq ($(DYNAMIC_SHARED_LIBV8SO), true)
+LOCAL_CFLAGS += -DENABLE_WORKERS=1
+LOCAL_CFLAGS += -DENABLE_SHARED_WORKERS=1
+endif
+LOCAL_CFLAGS += -DENABLE_CHANNEL_MESSAGING=1
 LOCAL_CFLAGS += -Wno-endif-labels -Wno-import -Wno-format
 LOCAL_CFLAGS += -fno-strict-aliasing
 LOCAL_CFLAGS += -include "WebCorePrefix.h"
@@ -364,6 +394,16 @@ ifeq ($(WEBCORE_INSTRUMENTATION),true)
 LOCAL_CFLAGS += -DANDROID_INSTRUMENT
 endif
 
+ifeq ($(WEBCORE_ACCELERATED_SCROLLING),true)
+LOCAL_CFLAGS += -DENABLE_ACCELERATED_SCROLLING
+LOCAL_CFLAGS += -DENABLE_GPU_ACCELERATED_SCROLLING
+LOCAL_CFLAGS += -DENABLE_GPU_ACCELERATED_SCROLLING2
+endif
+
+ifeq ($(WEBCORE_FPS_DISPLAY),true)
+LOCAL_CFLAGS += -DENABLE_FPS_DISPLAY
+endif
+
 # LOCAL_LDLIBS is used in simulator builds only and simulator builds are only
 # valid on Linux
 LOCAL_LDLIBS += -lpthread -ldl
@@ -383,7 +423,8 @@ LOCAL_SHARED_LIBRARIES := \
 	libmedia \
 	libEGL \
 	libGLESv2 \
-	libgui
+	libgui \
+	libz
 
 ifeq ($(PLATFORM_VERSION),3.1.4.1.5.9.2.6.5)
 LOCAL_SHARED_LIBRARIES += libsurfaceflinger_client
@@ -411,12 +452,25 @@ endif
 
 # Build the list of static libraries
 LOCAL_STATIC_LIBRARIES := libxml2 libxslt libhyphenation libskiagpu
+
+# Linkage to v8, node
 ifeq ($(JAVASCRIPT_ENGINE),v8)
-ifeq ($(DYNAMIC_SHARED_LIBV8SO),true)
-LOCAL_SHARED_LIBRARIES += libv8
-else
-LOCAL_STATIC_LIBRARIES += libv8
-endif
+    ifeq ($(DYNAMIC_SHARED_LIBV8SO),true)
+        # use vendor/qcom/opensource
+        LOCAL_SHARED_LIBRARIES += libv8
+        ifeq ($(PROTEUS_DEVICE_API),true)
+            LOCAL_CFLAGS += -DPROTEUS_DEVICE_API
+            LOCAL_SHARED_LIBRARIES += libnode
+        endif
+    else
+        ifeq ($(PROTEUS_DEVICE_API),true)
+            LOCAL_CFLAGS += -DPROTEUS_DEVICE_API
+            # proteus: use external/v8
+            LOCAL_SHARED_LIBRARIES += libv8 libnode
+        else
+            LOCAL_STATIC_LIBRARIES += libv8
+        endif
+    endif
 endif
 
 ifeq ($(HTTP_STACK),chrome)

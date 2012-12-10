@@ -4,6 +4,7 @@
     Copyright (C) 2002 Waldo Bastian (bastian@kde.org)
     Copyright (C) 2006 Samuel Weinig (sam.weinig@gmail.com)
     Copyright (C) 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+    Copyright (c) 2011, Code Aurora Forum. All rights reserved
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -43,6 +44,11 @@
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
+#include <wtf/text/CString.h>
+
+#if USE(CHROME_NETWORK_STACK)
+    #include <StatHubCmdApi.h>
+#endif //  USE(CHROME_NETWORK_STACK)
 
 using namespace WTF;
 
@@ -108,6 +114,9 @@ CachedResource::CachedResource(const String& url, Type type)
 #ifndef NDEBUG
     cachedResourceLeakCounter.increment();
 #endif
+#if USE(CHROME_NETWORK_STACK)
+    m_statHubHash = StatHubHash(url.latin1().data());
+#endif //  USE(CHROME_NETWORK_STACK)
 }
 
 CachedResource::~CachedResource()
@@ -166,6 +175,20 @@ void CachedResource::error(CachedResource::Status status)
 void CachedResource::finish()
 {
     m_status = Cached;
+#if USE(CHROME_NETWORK_STACK)
+    if (m_statHubHash) {
+        StatHubCmd(INPUT_CMD_WK_RES_LOAD_FINISHED, (void*)m_statHubHash, 0, (void*)canUseCacheValidator(), 0);
+    }
+#endif //  USE(CHROME_NETWORK_STACK)
+}
+
+void CachedResource::setInCache(bool inCache) {
+    m_inCache = inCache;
+#if USE(CHROME_NETWORK_STACK)
+    if (m_statHubHash) {
+        StatHubCmd(INPUT_CMD_WK_RES_MMC_STATUS, (void*)m_statHubHash, 0, (void*)m_inCache, 0);
+    }
+#endif //  USE(CHROME_NETWORK_STACK)
 }
 
 bool CachedResource::isExpired() const

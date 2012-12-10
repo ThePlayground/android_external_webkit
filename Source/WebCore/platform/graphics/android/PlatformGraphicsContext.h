@@ -1,5 +1,6 @@
 /*
  * Copyright 2006, The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,20 +39,51 @@ class SkCanvas;
 namespace WebCore {
 
     class GraphicsContext;
-    
+
 class PlatformGraphicsContext {
 public:
     PlatformGraphicsContext();
-    // Pass in a recording canvas, and an array of button information to be 
+    // Pass in a recording canvas, and an array of button information to be
     // updated.
     PlatformGraphicsContext(SkCanvas* canvas);
+    // Create a recording canvas
+    PlatformGraphicsContext(int width, int height);
     ~PlatformGraphicsContext();
-    
-    SkCanvas*                   mCanvas;
-    
+
+    SkCanvas* mCanvas;
+
     bool deleteUs() const { return m_deleteCanvas; }
+
+    void convertToNonRecording();
+    void clearRecording();
+    SkPicture* getRecordingPicture() const { return m_picture; }
+
+    // When we detect animation we switch to the recording canvas for better
+    // performance. If JS tries to access the pixels of the canvas, the
+    // recording canvas becomes tainted and must be converted back to a bitmap
+    // backed canvas.
+    // CanvasState represents a directed acyclic graph:
+    // DEFAULT ----> ANIMATION_DETECTED ----> RECORDING ----> DIRTY
+    enum CanvasState {
+        DEFAULT, // SkBitmap backed
+        ANIMATION_DETECTED, // JavaScript clearRect of canvas is occuring at a high enough rate SkBitmap backed
+        RECORDING, // SkPicture backed
+        DIRTY // A pixel readback occured; convert to SkBitmap backed.
+    };
+
+    bool isDefault() const { return m_canvasState == DEFAULT; }
+    bool isAnimating() const { return m_canvasState == ANIMATION_DETECTED; }
+    bool isRecording() const { return m_canvasState == RECORDING; }
+    bool isDirty() const { return m_canvasState == DIRTY; }
+
+    void setIsAnimating();
+
 private:
-    bool                     m_deleteCanvas;
+    bool m_deleteCanvas;
+    enum CanvasState m_canvasState;
+
+    SkPicture* m_picture;
+
 };
 
 }

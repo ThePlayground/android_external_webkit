@@ -4,6 +4,7 @@
     Copyright (C) 2002 Waldo Bastian (bastian@kde.org)
     Copyright (C) 2004, 2005, 2006, 2008 Apple Inc. All rights reserved.
     Copyright (C) 2009 Torch Mobile Inc. http://www.torchmobile.com/
+    Copyright (c) 2011, Code Aurora Forum. All rights reserved
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -53,7 +54,23 @@
 
 #define PRELOAD_DEBUG 0
 
+#if USE(CHROME_NETWORK_STACK)
+    #include <StatHubCmdApi.h>
+#endif //  USE(CHROME_NETWORK_STACK)
+
 namespace WebCore {
+
+static void SaveSubURL(CachedResourceLoader* cachedResourceLoader, CachedResource* resource) {
+#if USE(CHROME_NETWORK_STACK)
+    if (NULL != resource && NULL!=cachedResourceLoader) {
+        unsigned short main_url_len = cachedResourceLoader->document()->url().string().length();
+        unsigned short sub_url_len = resource->url().length();
+        if (sub_url_len && main_url_len && cachedResourceLoader->document()->url().protocolInHTTPFamily() && KURL(ParsedURLString,resource->url()).protocolInHTTPFamily()) {
+            StatHubUpdateSubUrl(cachedResourceLoader->document()->url().string().latin1().data(), resource->url().latin1().data());
+        }
+    }
+#endif //  USE(CHROME_NETWORK_STACK)
+}
 
 static CachedResource* createResource(CachedResource::Type type, const KURL& url, const String& charset)
 {
@@ -353,6 +370,8 @@ CachedResource* CachedResourceLoader::requestResource(CachedResource::Type type,
 
     if (!resource)
         return 0;
+
+    SaveSubURL(this, resource);
 
     ASSERT(resource->url() == url.string());
     m_documentResources.set(resource->url(), resource);

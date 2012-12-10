@@ -37,6 +37,7 @@
 #include "SkPath.h"
 #include "TilesManager.h"
 #include "TilesTracker.h"
+#include "CanvasLayerAndroid.h"
 #include "TreeManager.h"
 #include <wtf/CurrentTime.h>
 
@@ -86,6 +87,12 @@ GLWebViewState::GLWebViewState()
     , m_expandedTileBoundsY(0)
     , m_highEndGfx(false)
     , m_scale(1)
+    , m_current_time(0.0f)
+    , m_start_time(0.0f)
+    , m_total_time(0.0f)
+    , m_iterations(0)
+    , m_avg_fps(0.0f)
+    , m_start(true)
     , m_layersRenderingMode(kAllTextures)
 {
     m_viewport.setEmpty();
@@ -449,6 +456,27 @@ bool GLWebViewState::drawGL(IntRect& rect, SkRect& viewport, IntRect* invalRect,
                             IntRect& clip, float scale,
                             bool* treesSwappedPtr, bool* newTreeHasAnimPtr)
 {
+    if(m_start)
+    {
+        m_start_time = currentTime();
+        m_current_time = currentTime();
+        m_total_time = 0;
+        m_iterations = 0;
+        m_avg_fps = 0;
+        m_counter_test = 0;
+        m_start = false;
+    }
+    else{
+        m_current_time = currentTime();
+        m_total_time = m_current_time - m_start_time;
+        ++m_iterations;
+        if(m_total_time > 15)
+        {
+            ++m_counter_test;
+            m_avg_fps = m_iterations/m_total_time;
+        }
+    }
+
     m_scale = scale;
     TilesManager::instance()->getProfiler()->nextFrame(viewport.fLeft,
                                                        viewport.fTop,
@@ -586,6 +614,8 @@ bool GLWebViewState::drawGL(IntRect& rect, SkRect& viewport, IntRect* invalRect,
     TilesManager::instance()->getTilesTracker()->showTrackTextures();
     ImagesManager::instance()->showImages();
 #endif
+
+    CanvasLayerAndroid::cleanupAssets();
 
     return ret;
 }

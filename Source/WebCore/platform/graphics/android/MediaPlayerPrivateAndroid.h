@@ -67,7 +67,7 @@ public:
     virtual void setRate(float) { }
     virtual bool paused() const { return m_paused; }
 
-    virtual void setVolume(float) { }
+    virtual void setVolume(float);
 
     virtual MediaPlayer::NetworkState networkState() const { return m_networkState; }
     virtual MediaPlayer::ReadyState readyState() const { return m_readyState; }
@@ -89,7 +89,7 @@ public:
 
     virtual void paint(GraphicsContext*, const IntRect&) { }
 
-    virtual void onPrepared(int duration, int width, int height) { }
+    virtual void updateSizeAndDuration(int duration, int width, int height) { }
     void onEnded();
     void onPaused();
     virtual void onPosterFetched(SkBitmap*) { }
@@ -130,6 +130,8 @@ protected:
 
     IntSize m_naturalSize;
     bool m_naturalSizeUnknown;
+
+    bool m_durationUnknown;
 
     bool m_isVisible;
     VideoLayerAndroid* m_videoLayer;

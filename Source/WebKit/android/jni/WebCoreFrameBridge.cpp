@@ -127,6 +127,11 @@
 #include "autofill/WebAutofill.h"
 #endif
 
+
+#if USE(CHROME_NETWORK_STACK)
+    #include <StatHubCmdApi.h>
+#endif //  USE(CHROME_NETWORK_STACK)
+
 using namespace JSC::Bindings;
 
 static String* gUploadFileLabel;
@@ -594,6 +599,12 @@ WebFrame::loadStarted(WebCore::Frame* frame)
     bool isMainFrame = (!frame->tree() || !frame->tree()->parent());
     WebCore::FrameLoadType loadType = frame->loader()->loadType();
 
+#if USE(CHROME_NETWORK_STACK)
+    if (isMainFrame) {
+        StatHubCmd(INPUT_CMD_WK_START_PAGE_LOAD, (void*)url.string().utf8().data(), strlen( url.string().utf8().data())+1, (void*)frame, 0);
+    }
+#endif //  USE(CHROME_NETWORK_STACK)
+
     if (loadType == WebCore::FrameLoadTypeReplace ||
             (loadType == WebCore::FrameLoadTypeRedirectWithLockedBackForwardList &&
              !isMainFrame))
@@ -676,6 +687,12 @@ WebFrame::didFinishLoad(WebCore::Frame* frame)
     env->CallVoidMethod(javaFrame.get(), mJavaFrame->mLoadFinished, urlStr, static_cast<int>(loadType), isMainFrame);
     checkException(env);
     env->DeleteLocalRef(urlStr);
+
+#if USE(CHROME_NETWORK_STACK)
+    if (isMainFrame) {
+        StatHubCmd(INPUT_CMD_WK_FINISH_PAGE_LOAD, (void*)url.string().utf8().data(), strlen( url.string().utf8().data())+1, (void*)frame, 0);
+    }
+#endif //  USE(CHROME_NETWORK_STACK)
 }
 
 void

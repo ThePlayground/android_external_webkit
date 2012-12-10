@@ -1,5 +1,6 @@
 /*
  * Copyright 2007, The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,6 +60,11 @@
 #include <utils/misc.h>
 #include <wtf/text/CString.h>
 
+#ifdef PROTEUS_DEVICE_API
+// proteus:
+#include "NodeProxy.h"
+
+#endif
 namespace android {
 
 static const int permissionFlags660 = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
@@ -109,6 +115,10 @@ struct FieldIds {
         mDatabasePath = env->GetFieldID(clazz, "mDatabasePath", "Ljava/lang/String;");
         mDatabasePathHasBeenSet = env->GetFieldID(clazz, "mDatabasePathHasBeenSet", "Z");
 #endif
+#ifdef PROTEUS_DEVICE_API
+        // proteus: expose the app's writable private path to nodejs
+        mDataPath = env->GetFieldID(clazz, "mDataPath", "Ljava/lang/String;");
+#endif
 #if ENABLE(OFFLINE_WEB_APPLICATIONS)
         mAppCacheEnabled = env->GetFieldID(clazz, "mAppCacheEnabled", "Z");
         mAppCachePath = env->GetFieldID(clazz, "mAppCachePath", "Ljava/lang/String;");
@@ -130,6 +140,7 @@ struct FieldIds {
         mSyntheticLinksEnabled = env->GetFieldID(clazz, "mSyntheticLinksEnabled", "Z");
         mUseDoubleTree = env->GetFieldID(clazz, "mUseDoubleTree", "Z");
         mPageCacheCapacity = env->GetFieldID(clazz, "mPageCacheCapacity", "I");
+        mWOFFEnabled = env->GetFieldID(clazz, "mWOFFEnabled", "Z");
 #if ENABLE(WEB_AUTOFILL)
         mAutoFillEnabled = env->GetFieldID(clazz, "mAutoFillEnabled", "Z");
         mAutoFillProfile = env->GetFieldID(clazz, "mAutoFillProfile", "Landroid/webkit/WebSettings$AutoFillProfile;");
@@ -188,6 +199,7 @@ struct FieldIds {
         LOG_ASSERT(mMaximumDecodedImageSize, "Could not find field mMaximumDecodedImageSize");
         LOG_ASSERT(mUseDoubleTree, "Could not find field mUseDoubleTree");
         LOG_ASSERT(mPageCacheCapacity, "Could not find field mPageCacheCapacity");
+        LOG_ASSERT(mWOFFEnabled, "Could not find field mWOFFEnabled");
 
         jclass enumClass = env->FindClass("java/lang/Enum");
         LOG_ASSERT(enumClass, "Could not find Enum class!");
@@ -236,6 +248,7 @@ struct FieldIds {
     jfieldID mSyntheticLinksEnabled;
     jfieldID mUseDoubleTree;
     jfieldID mPageCacheCapacity;
+    jfieldID mWOFFEnabled;
     // Ordinal() method and value field for enums
     jmethodID mOrdinal;
     jfieldID  mTextSizeValue;
@@ -269,6 +282,10 @@ struct FieldIds {
 #endif
 #if USE(CHROME_NETWORK_STACK)
     jfieldID mOverrideCacheMode;
+#endif
+#ifdef PROTEUS_DEVICE_API
+    // proteus:
+    jfieldID mDataPath;
 #endif
 };
 
@@ -540,6 +557,9 @@ public:
         } else
             s->setUsesPageCache(false);
 
+        flag = env->GetBooleanField(obj, gFieldIds->mWOFFEnabled);
+        s->setWOFFEnabled(flag);
+
 #if ENABLE(WEB_AUTOFILL)
         flag = env->GetBooleanField(obj, gFieldIds->mAutoFillEnabled);
         // TODO: This updates the Settings WebCore side with the user's
@@ -571,6 +591,12 @@ public:
         // This is required to enable the XMLTreeViewer when loading an XML document that
         // has no style attached to it. http://trac.webkit.org/changeset/79799
         s->setDeveloperExtrasEnabled(true);
+#ifdef PROTEUS_DEVICE_API
+
+        // proteus: provide the app private data path to node
+        str = (jstring)env->GetObjectField(obj, gFieldIds->mDataPath);
+        WebCore::NodeProxy::setAppDataPath(jstringToWtfString(env, str));
+#endif
     }
 };
 

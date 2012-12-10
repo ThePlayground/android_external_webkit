@@ -35,8 +35,17 @@ FEATURE_DEFINES := ENABLE_ORIENTATION_EVENTS=1 ENABLE_TOUCH_EVENTS=1 ENABLE_DATA
 # The defines above should be identical to those for JSC.
 FEATURE_DEFINES += V8_BINDING
 
+ifeq ($(DYNAMIC_SHARED_LIBV8SO), true)
+FEATURE_DEFINES += ENABLE_WORKERS=1 ENABLE_SHARED_WORKERS=1
+endif
+
 ifeq ($(ENABLE_SVG), true)
     FEATURE_DEFINES += ENABLE_SVG=1
+endif
+
+# conditionally compile proteus bindings
+ifeq ($(PROTEUS_DEVICE_API), true)
+    FEATURE_DEFINES += PROTEUS_DEVICE_API
 endif
 
 # CSS

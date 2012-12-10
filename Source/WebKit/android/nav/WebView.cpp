@@ -75,6 +75,10 @@
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/CString.h>
 
+#if ENABLE(ACCELERATED_SCROLLING)
+#include "Renderer.h"
+#endif
+
 // Free as much as we possible can
 #define TRIM_MEMORY_COMPLETE 80
 // Free a lot (all textures gone)
@@ -210,6 +214,10 @@ WebView(JNIEnv* env, jobject javaWebView, int viewImpl, WTF::String drawableDir,
     m_glWebViewState = 0;
     m_pageSwapCallbackRegistered = false;
 #endif
+
+#if ENABLE(ACCELERATED_SCROLLING)
+    m_scrollRenderer = Renderer::createRenderer();
+#endif
 }
 
 ~WebView()
@@ -231,6 +239,10 @@ WebView(JNIEnv* env, jobject javaWebView, int viewImpl, WTF::String drawableDir,
     SkSafeUnref(m_baseLayer);
     delete m_glDrawFunctor;
     delete m_buttonSkin;
+
+#if ENABLE(ACCELERATED_SCROLLING)
+    m_scrollRenderer->release();
+#endif
 }
 
 void stopGL()
@@ -505,6 +517,7 @@ bool drawGL(WebCore::IntRect& viewRect, WebCore::IntRect* invalRect,
     // once the correct scale is set
     if (!m_visibleRect.isFinite())
         return false;
+
     bool treesSwapped = false;
     bool newTreeHasAnim = false;
     bool ret = m_glWebViewState->drawGL(viewRect, m_visibleRect, invalRect,
@@ -536,6 +549,13 @@ PictureSet* draw(SkCanvas* canvas, SkColor bgColor, int extras, bool split)
 
     // draw the content of the base layer first
     PictureSet* content = m_baseLayer->content();
+#if ENABLE(ACCELERATED_SCROLLING)
+    bool do_split = false;
+    if (!m_scrollRenderer->drawContent(canvas, bgColor,
+        false,
+        *content, do_split))
+    {
+#endif // ACCELERATED_SCROLLING
     int sc = canvas->save(SkCanvas::kClip_SaveFlag);
     canvas->clipRect(SkRect::MakeLTRB(0, 0, content->width(),
                 content->height()), SkRegion::kDifference_Op);
@@ -543,6 +563,10 @@ PictureSet* draw(SkCanvas* canvas, SkColor bgColor, int extras, bool split)
     canvas->restoreToCount(sc);
     if (content->draw(canvas))
         ret = split ? new PictureSet(*content) : 0;
+
+#if ENABLE(ACCELERATED_SCROLLING)
+    }
+#endif //ACCELERATED_SCROLLING
 
     CachedRoot* root = getFrameCache(AllowNewer);
     if (!root) {
@@ -1477,6 +1501,26 @@ void setBaseLayer(BaseLayerAndroid* layer, SkRegion& inval, bool showVisualIndic
         return;
     root->resetLayers();
     root->setRootLayer(compositeRoot());
+
+#if ENABLE(ACCELERATED_SCROLLING)
+    if (m_scrollRenderer && m_scrollRenderer->enabled()) {
+        if (!m_baseLayer)
+            m_scrollRenderer->clearContent();
+        else {
+            PictureSet* content = m_baseLayer->content();
+            if (!content)
+                m_scrollRenderer->clearContent();
+            else {
+                bool loading = m_baseLayer->contentLoading();
+                m_scrollRenderer->setContent(*content, &inval, loading);
+            }
+            m_scrollRenderer->setAlphaBlending(m_baseLayer->needAlphaBlending());
+        }
+        if (m_baseLayer)
+            m_baseLayer->setEnableDraw(false);
+    } else if (m_baseLayer)
+        m_baseLayer->setEnableDraw(true);
+#endif
 }
 
 void getTextSelectionRegion(SkRegion *region)
@@ -1491,6 +1535,18 @@ void getTextSelectionHandles(int* handles)
 
 void replaceBaseContent(PictureSet* set)
 {
+#if ENABLE(ACCELERATED_SCROLLING)
+    if (m_scrollRenderer && m_scrollRenderer->enabled()) {
+        PictureSet* content = (m_baseLayer)? set : 0;
+        if (!content)
+            m_scrollRenderer->clearContent();
+        else {
+            bool loading = (m_baseLayer)? m_baseLayer->contentLoading() : false;
+            m_scrollRenderer->setContent(*content, 0, loading);
+        }
+    }
+#endif
+
     if (!m_baseLayer)
         return;
     m_baseLayer->setContent(*set);
@@ -1501,6 +1557,12 @@ void copyBaseContentToPicture(SkPicture* picture)
 {
     if (!m_baseLayer)
         return;
+#if ENABLE(ACCELERATED_SCROLLING)
+    if (m_scrollRenderer && m_scrollRenderer->enabled()) {
+        if (m_scrollRenderer)
+            m_scrollRenderer->finish();
+    }
+#endif
     PictureSet* content = m_baseLayer->content();
     m_baseLayer->drawCanvas(picture->beginRecording(content->width(), content->height(),
             SkPicture::kUsePathBoundsForClip_RecordingFlag));
