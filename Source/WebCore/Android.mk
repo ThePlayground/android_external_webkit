@@ -1302,6 +1302,7 @@ endif
 # HACK for qcom devices CPU upload mode
 ifeq ($(TARGET_FORCE_CPU_UPLOAD),true)
 LOCAL_CFLAGS += -DFORCE_CPU_UPLOAD
+endif
 
 # proteus:
 ifeq ($(PROTEUS_DEVICE_API), true)
