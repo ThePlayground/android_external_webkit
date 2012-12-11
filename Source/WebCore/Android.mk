@@ -1310,7 +1310,7 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
         node/NodeProxy.cpp
 endif
 
-ifeq ($(call is-chipset-prefix-in-board-platform,msm7627),true)
+ifeq ($(TARGET_BOARD_PLATFORM,msm7x27),true)
   LOCAL_CFLAGS += -DVIDEO_PLATFORM_ID=2
 else
   ifeq ($(TARGET_BOARD_PLATFORM),msm7x30)
