@@ -515,7 +515,7 @@ bool drawGL(WebCore::IntRect& viewRect, WebCore::IntRect* invalRect,
     // Make sure we have valid coordinates. We might not have valid coords
     // if the zoom manager is still initializing. We will be redrawn
     // once the correct scale is set
-    if (!m_visibleRect.isFinite())
+    if (!m_visibleRect.hasValidCoordinates())
         return false;
 
     bool treesSwapped = false;
